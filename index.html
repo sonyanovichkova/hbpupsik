@@ -369,7 +369,7 @@ async function tick() {
     if (tracks.length) {
       const sorted = [...tracks].sort((a,b) => a.timestamp - b.timestamp);
       const n = await scrobble(sorted, S.partner.sessionKey);
-      S.lastTimestamp   = Math.max(...sorted.map(t=>t.timestamp));
+      S.lastTimestamp   = Math.max(...sorted.map(t=>t.timestamp)) + 1;
       S.totalSynced     += n;
       S.sessionSynced   += n;
       save();
