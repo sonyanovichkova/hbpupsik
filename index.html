@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>lastfm together</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --surface2: #1d1d1d;
+      --border: #272727;
+      --border2: #333;
+      --accent: #c8a84b;
+      --accent-dim: rgba(200, 168, 75, 0.18);
+      --accent-faint: rgba(200, 168, 75, 0.06);
+      --text: #ede9e0;
+      --muted: #595959;
+      --muted2: #404040;
+      --red: #b84040;
+      --green: #4a9870;
+    }
+
+    html { font-size: 14px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px 80px;
+    }
+
+    #app { width: 100%; max-width: 440px; }
+
+    .header {
+      display: flex; align-items: baseline; gap: 10px;
+      margin-bottom: 40px;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.25rem; font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .logo span { color: var(--accent); }
+    .logo-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.05em; }
+
+    .section { margin-bottom: 24px; }
+    .section-label {
+      font-size: 0.62rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block; font-size: 0.68rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border2); border-radius: 5px;
+      padding: 10px 12px; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 0.85rem;
+      outline: none; transition: border-color 0.15s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--muted2); }
+
+    .btn {
+      display: inline-flex; align-items: center;
+      justify-content: center; gap: 7px;
+      padding: 10px 16px; border-radius: 5px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem; letter-spacing: 0.04em;
+      cursor: pointer; border: none;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #1a1400; font-weight: 500; }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; filter: none; }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+    .btn-sm { font-size: 0.68rem; padding: 5px 10px; }
+    .btn-danger {
+      background: transparent; color: var(--red);
+      border: 1px solid rgba(184,64,64,.3);
+    }
+    .btn-danger:hover { background: rgba(184,64,64,.08); }
+    .btn-full { width: 100%; }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-lastfm { background: #d51007; color: #fff; font-weight: 500; width: 100%; }
+    .btn-lastfm:hover { filter: brightness(1.1); }
+
+    .error-msg { font-size: 0.73rem; color: var(--red); margin-top: 10px;
+      padding: 8px 10px; background: rgba(184,64,64,.08);
+      border-radius: 4px; border-left: 2px solid var(--red); }
+    .notice {
+      font-size: 0.73rem; color: var(--muted); line-height: 1.65;
+      margin-top: 12px; padding: 11px 13px;
+      background: var(--accent-faint);
+      border: 1px solid rgba(200,168,75,.15); border-radius: 5px;
+    }
+    .notice a { color: var(--accent); text-decoration: none; }
+    .notice a:hover { text-decoration: underline; }
+    .notice strong { color: var(--text); font-weight: 500; }
+
+    /* User pills */
+    .user-pill {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+    }
+    .user-pill-left { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); }
+    .dot.on { background: var(--green); }
+    .pill-label { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .pill-name { font-size: 0.88rem; color: var(--text); margin-top: 2px; }
+
+    /* DJ button */
+    .dj-area {
+      display: flex; flex-direction: column;
+      align-items: center; padding: 28px 0 22px;
+    }
+    .dj-btn {
+      width: 148px; height: 148px; border-radius: 50%;
+      border: none; cursor: pointer; outline: none;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dj-btn.off {
+      background: var(--surface2);
+      box-shadow: 0 0 0 1px var(--border2), 0 4px 24px rgba(0,0,0,.45);
+    }
+    .dj-btn.off:hover {
+      transform: scale(1.04);
+      box-shadow: 0 0 0 1px var(--border2), 0 6px 32px rgba(0,0,0,.5),
+                  0 0 0 5px var(--accent-faint);
+    }
+    .dj-btn.on {
+      background: var(--accent-dim);
+      animation: glow 2.5s ease-in-out infinite;
+    }
+    @keyframes glow {
+      0%,100% { box-shadow: 0 0 0 1px rgba(200,168,75,.4), 0 0 55px rgba(200,168,75,.22), 0 0 110px rgba(200,168,75,.09); }
+      50%      { box-shadow: 0 0 0 1px rgba(200,168,75,.55), 0 0 75px rgba(200,168,75,.32), 0 0 130px rgba(200,168,75,.14); }
+    }
+    .dj-icon { font-size: 2rem; line-height: 1; }
+    .dj-label {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 0.68rem; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .dj-btn.on .dj-label { color: var(--accent); }
+    .dj-caption { margin-top: 16px; text-align: center; }
+    .dj-caption-text { font-size: 0.75rem; color: var(--muted); }
+    .dj-caption-text.active { color: var(--accent); }
+
+    /* Flow row */
+    .flow-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.72rem; color: var(--muted);
+      padding: 11px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 18px;
+    }
+    .flow-row.active { border-color: rgba(200,168,75,.25); }
+    .flow-name { color: var(--text); font-size: 0.82rem; }
+    .flow-spacer { flex: 1; }
+    .flow-arrow { color: var(--muted2); font-size: 1.1rem; transition: color 0.3s; }
+    .flow-row.active .flow-arrow { color: var(--accent); }
+
+    /* Now playing */
+    .np {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 13px 15px;
+      margin-bottom: 10px; min-height: 58px;
+      transition: border-color 0.3s;
+    }
+    .np.active { border-color: rgba(200,168,75,.25); }
+    .np-label {
+      font-size: 0.6rem; color: var(--muted);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+    }
+    .live { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+    .np-track { font-family:'Syne',sans-serif; font-size:.92rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .np-artist { font-size:.76rem; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .np-empty { font-size:.76rem; color:var(--muted2); font-style:italic; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+    .stat-n { font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:800; color:var(--accent); line-height:1; }
+    .stat-l { font-size:.6rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:3px; }
+
+    /* Log */
+    .log { background:var(--surface); border:1px solid var(--border); border-radius:8px; max-height:170px; overflow-y:auto; }
+    .log::-webkit-scrollbar { width:3px; }
+    .log::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+    .log-row { padding:8px 13px; border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:baseline; }
+    .log-row:last-child { border-bottom:none; }
+    .log-t { font-size:.63rem; color:var(--muted); flex-shrink:0; }
+    .log-m { font-size:.7rem; color:var(--muted); line-height:1.4; }
+    .log-m.ok { color:var(--text); }
+    .log-m.err { color:var(--red); }
+    .log-m.hi { color:var(--accent); }
+    .log-empty { padding:16px 13px; font-size:.7rem; color:var(--muted2); font-style:italic; }
+
+    /* Auth pending */
+    .auth-box {
+      background:var(--surface); border:1px solid rgba(200,168,75,.2);
+      border-radius:8px; padding:28px; text-align:center;
+    }
+    .auth-box p { font-size:.78rem; color:var(--muted); margin-top:14px; line-height:1.6; }
+
+    /* Waveform */
+    .waveform { display:flex; align-items:center; gap:3px; height:22px; }
+    .wb { width:3px; border-radius:2px; background:var(--accent); animation:wav 1.2s ease-in-out infinite; }
+    .wb:nth-child(1){height:8px;animation-delay:0s}
+    .wb:nth-child(2){height:16px;animation-delay:.1s}
+    .wb:nth-child(3){height:10px;animation-delay:.2s}
+    .wb:nth-child(4){height:20px;animation-delay:.15s}
+    .wb:nth-child(5){height:13px;animation-delay:.05s}
+    @keyframes wav { 0%,100%{transform:scaleY(.35);opacity:.55} 50%{transform:scaleY(1);opacity:1} }
+
+    .spinner {
+      display:inline-block; width:13px; height:13px;
+      border:1.5px solid var(--border2); border-top-color:var(--accent);
+      border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .fade-in { animation: fi .22s ease; }
+    @keyframes fi { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const S = {
+  screen: 'loading',
+  apiKey: '', apiSecret: '',
+  me:      { username: '', sessionKey: '' },
+  partner: { username: '', sessionKey: '' },
+  djMode: false,
+  pollTimer: null,
+  lastTimestamp: null,
+  totalSynced: 0,
+  sessionSynced: 0,
+  log: [],
+  nowPlaying: null,
+  lastError: null,
+  pendingWhich: null,
+};
+
+// ─── Storage ──────────────────────────────────────────────────────────────────
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('lft_v3') || '{}');
+    S.apiKey      = d.apiKey || '';
+    S.apiSecret   = d.apiSecret || '';
+    S.me          = d.me      || { username:'', sessionKey:'' };
+    S.partner     = d.partner || { username:'', sessionKey:'' };
+    S.totalSynced = d.totalSynced || 0;
+  } catch(e){}
+}
+function save() {
+  localStorage.setItem('lft_v3', JSON.stringify({
+    apiKey: S.apiKey, apiSecret: S.apiSecret,
+    me: S.me, partner: S.partner, totalSynced: S.totalSynced,
+  }));
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+const API = 'https://ws.audioscrobbler.com/2.0/';
+
+function sig(params) {
+  const str = Object.keys(params).filter(k => k !== 'format').sort()
+    .map(k => k + params[k]).join('') + S.apiSecret;
+  return md5(str);
+}
+async function apiPost(params) {
+  const s = sig(params);
+  const body = new URLSearchParams({...params, api_sig:s, format:'json'});
+  const r = await fetch(API, { method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body.toString() });
+  const d = await r.json();
+  if (d.error) throw new Error(`[${d.error}] ${d.message}`);
+  return d;
+}
+async function apiGet(params) {
+  const r = await fetch(API + '?' + new URLSearchParams({...params, format:'json'}));
+  const d = await r.json();
+  if (d.error) throw new Error(`[${d.error}] ${d.message}`);
+  return d;
+}
+
+async function exchangeToken(token) {
+  const d = await apiPost({ method:'auth.getSession', api_key:S.apiKey, token });
+  return { username: d.session.name, sessionKey: d.session.key };
+}
+
+async function getNowPlaying(username) {
+  const d = await apiGet({ method:'user.getRecentTracks', user:username, api_key:S.apiKey, limit:1 });
+  let t = d.recenttracks?.track || [];
+  if (!Array.isArray(t)) t = [t];
+  const np = t.find(x => x['@attr']?.nowplaying === 'true');
+  if (!np) return null;
+  return { artist: np.artist?.['#text']||'', title: np.name||'', album: np.album?.['#text']||'' };
+}
+
+async function getNewTracks(username, since) {
+  const d = await apiGet({ method:'user.getRecentTracks', user:username, api_key:S.apiKey, from:since, limit:50 });
+  let t = d.recenttracks?.track || [];
+  if (!Array.isArray(t)) t = [t];
+  return t
+    .filter(x => x.date && !x['@attr']?.nowplaying)
+    .map(x => ({
+      artist: x.artist?.['#text']||'',
+      title:  x.name||'',
+      album:  x.album?.['#text']||'',
+      timestamp: parseInt(x.date?.uts||0),
+    }));
+}
+
+async function scrobble(tracks, sk) {
+  if (!tracks.length) return 0;
+  const batch = tracks.slice(0,50);
+  const p = { method:'track.scrobble', api_key:S.apiKey, sk };
+  batch.forEach((t,i) => {
+    p[`artist[${i}]`]    = t.artist;
+    p[`track[${i}]`]     = t.title;
+    p[`timestamp[${i}]`] = t.timestamp;
+    if (t.album) p[`album[${i}]`] = t.album;
+  });
+  await apiPost(p);
+  return batch.length;
+}
+
+// ─── DJ loop ──────────────────────────────────────────────────────────────────
+async function tick() {
+  try {
+    const since = S.lastTimestamp || (Math.floor(Date.now()/1000) - 60);
+    S.nowPlaying = await getNowPlaying(S.me.username);
+    const tracks = await getNewTracks(S.me.username, since);
+    if (tracks.length) {
+      const sorted = [...tracks].sort((a,b) => a.timestamp - b.timestamp);
+      const n = await scrobble(sorted, S.partner.sessionKey);
+      S.lastTimestamp   = Math.max(...sorted.map(t=>t.timestamp));
+      S.totalSynced     += n;
+      S.sessionSynced   += n;
+      save();
+      const last = sorted[sorted.length-1];
+      addLog(`скробблено ${n}: ${last.artist} — ${last.title}`, 'ok');
+    }
+    S.lastError = null;
+  } catch(e) {
+    S.lastError = e.message;
+    addLog(`ошибка: ${e.message}`, 'err');
+  }
+  render();
+}
+
+function startDJ() {
+  S.djMode = true;
+  S.sessionSynced = 0;
+  S.lastTimestamp = Math.floor(Date.now()/1000);
+  addLog(`♫ DJ mode: ${S.me.username} → ${S.partner.username}`, 'hi');
+  tick();
+  S.pollTimer = setInterval(tick, 30000);
+  render();
+}
+function stopDJ() {
+  S.djMode = false;
+  clearInterval(S.pollTimer); S.pollTimer = null;
+  S.nowPlaying = null;
+  addLog(`стоп · ${S.sessionSynced} треков за сессию`, 'hi');
+  render();
+}
+
+function addLog(text, type='') {
+  S.log.unshift({ time: new Date().toTimeString().slice(0,5), text, type });
+  if (S.log.length > 60) S.log.pop();
+}
+
+// ─── OAuth ────────────────────────────────────────────────────────────────────
+function authUrl(which) {
+  const cb = encodeURIComponent(location.origin + location.pathname + `?auth=${which}`);
+  return `https://www.last.fm/api/auth/?api_key=${S.apiKey}&cb=${cb}`;
+}
+async function handleCallback() {
+  const p = new URLSearchParams(location.search);
+  const which = p.get('auth'), token = p.get('token');
+  if (!which || !token) return false;
+  history.replaceState({}, '', location.pathname);
+  if (!S.apiKey || !S.apiSecret) { S.screen='setup'; S.lastError='Сначала нужно ввести API ключи'; return true; }
+  S.screen = 'auth_pending'; S.pendingWhich = which; render();
+  try {
+    const session = await exchangeToken(token);
+    if (which === 'me') S.me = session;
+    else S.partner = session;
+    save(); S.lastError = null;
+  } catch(e) { S.lastError = `Ошибка: ${e.message}`; }
+  S.screen = 'connect'; render(); return true;
+}
+function doAuth(which) { save(); location.href = authUrl(which); }
+function disconnect(which) {
+  if (which==='me') S.me={username:'',sessionKey:''};
+  else S.partner={username:'',sessionKey:''};
+  save(); render();
+}
+
+// ─── Screens ──────────────────────────────────────────────────────────────────
+const hdr = () => `<div class="header">
+  <div class="logo">last<span>.fm</span> together</div>
+  <div class="logo-sub">sync</div>
+</div>`;
+
+/* Setup */
+function renderSetup() {
+  document.getElementById('app').innerHTML = `<div class="fade-in">
+    ${hdr()}
+    <div class="section">
+      <div class="section-label">API ключи</div>
+      <div class="card">
+        <div class="field">
+          <label>API Key</label>
+          <input id="k" type="text" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="${S.apiKey}">
+        </div>
+        <div class="field">
+          <label>Shared Secret</label>
+          <input id="s" type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="${S.apiSecret}">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-full" onclick="saveSetup()">Сохранить →</button>
+        </div>
+        ${S.lastError ? `<div class="error-msg">${S.lastError}</div>` : ''}
+        <div class="notice" style="margin-top:14px">
+          Создай приложение на <a href="https://www.last.fm/api/account/create" target="_blank">last.fm/api/account/create</a>.
+          Callback URL оставь пустым — вернёшься и заполнишь после деплоя на GitHub Pages.<br><br>
+          <strong>Эти же ключи используются на обоих компах.</strong>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function saveSetup() {
+  S.apiKey = document.getElementById('k').value.trim();
+  S.apiSecret = document.getElementById('s').value.trim();
+  if (!S.apiKey || !S.apiSecret) { S.lastError='Заполни оба поля'; render(); return; }
+  S.lastError = null; save(); S.screen='connect'; render();
+}
+
+/* Auth pending */
+function renderAuthPending() {
+  const label = S.pendingWhich==='me' ? 'твой аккаунт' : 'аккаунт партнёра';
+  document.getElementById('app').innerHTML = `<div class="fade-in">
+    ${hdr()}
+    <div class="auth-box">
+      <div class="spinner"></div>
+      <p>Получаем сессию (${label})…</p>
+    </div>
+  </div>`;
+}
+
+/* Connect */
+function renderConnect() {
+  const meOk = !!S.me.sessionKey, pOk = !!S.partner.sessionKey;
+
+  const pill = (label, name, which) => `
+    <div class="user-pill">
+      <div class="user-pill-left">
+        <div class="dot on"></div>
+        <div>
+          <div class="pill-label">${label}</div>
+          <div class="pill-name">${name}</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-danger" onclick="disconnect('${which}')">Выйти</button>
+    </div>`;
+
+  const loginCard = (which, hint) => `
+    <div class="card">
+      <p style="font-size:.73rem;color:var(--muted);line-height:1.65;margin-bottom:14px">
+        Нажми кнопку — откроется Last.fm, войди там в <strong>${hint}</strong>
+        и разреши доступ. Пароль сюда вводить не нужно.
+      </p>
+      <button class="btn btn-lastfm" onclick="doAuth('${which}')">Войти через Last.fm →</button>
+    </div>`;
+
+  document.getElementById('app').innerHTML = `<div class="fade-in">
+    ${hdr()}
+    ${S.lastError ? `<div class="error-msg" style="margin-bottom:16px">${S.lastError}</div>` : ''}
+
+    <div class="section">
+      <div class="section-label">Мой аккаунт</div>
+      ${meOk ? pill('мой аккаунт', S.me.username, 'me') : loginCard('me', 'свой аккаунт')}
+    </div>
+
+    <div class="section">
+      <div class="section-label">Аккаунт партнёра</div>
+      ${pOk ? pill('аккаунт партнёра', S.partner.username, 'partner') : loginCard('partner', 'аккаунт партнёра')}
+      ${!pOk ? `<div class="notice" style="margin-top:10px">
+        Нажми кнопку и <strong>попроси партнёра залогиниться</strong> у тебя на экране —
+        или сделай это сам если знаешь его данные. На компе партнёра всё то же самое,
+        только "мой" и "партнёра" меняются местами.
+      </div>` : ''}
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="S.screen='setup';S.lastError=null;render()">← ключи</button>
+      <button class="btn btn-primary btn-full" onclick="S.screen='main';render()"
+        ${meOk && pOk ? '' : 'disabled'}>Готово →</button>
+    </div>
+  </div>`;
+}
+
+/* Main */
+function renderMain() {
+  const np = S.nowPlaying;
+  const logHtml = S.log.length
+    ? S.log.map(e=>`<div class="log-row"><span class="log-t">${e.time}</span><span class="log-m ${e.type}">${e.text}</span></div>`).join('')
+    : `<div class="log-empty">пока тихо…</div>`;
+
+  document.getElementById('app').innerHTML = `<div class="fade-in">
+    ${hdr()}
+
+    <div class="flow-row ${S.djMode ? 'active' : ''}">
+      <span class="flow-name">${S.me.username}</span>
+      <span class="flow-spacer"></span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-spacer"></span>
+      <span class="flow-name">${S.partner.username}</span>
+    </div>
+
+    <div class="dj-area">
+      <button class="dj-btn ${S.djMode ? 'on' : 'off'}"
+        onclick="${S.djMode ? 'stopDJ()' : 'startDJ()'}">
+        ${S.djMode
+          ? `<div class="waveform"><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div></div>
+             <div class="dj-label">стоп</div>`
+          : `<div class="dj-icon">♫</div>
+             <div class="dj-label">я DJ</div>`}
+      </button>
+      <div class="dj-caption">
+        <div class="dj-caption-text ${S.djMode ? 'active' : ''}">
+          ${S.djMode
+            ? `мои треки идут к ${S.partner.username} · ${S.sessionSynced} за сессию`
+            : 'нажми, чтобы начать синхронизацию'}
+        </div>
+      </div>
+    </div>
+
+    <div class="np ${S.djMode ? 'active' : ''}">
+      ${S.djMode
+        ? `<div class="np-label"><div class="live"></div>сейчас у меня</div>`
+        : `<div class="np-label">последнее</div>`}
+      ${np
+        ? `<div class="np-track">${np.title}</div>
+           <div class="np-artist">${np.artist}${np.album?' · '+np.album:''}</div>`
+        : `<div class="np-empty">ничего не играет</div>`}
+    </div>
+
+    <div class="stats" style="margin-top:10px">
+      <div class="stat"><div class="stat-n">${S.totalSynced}</div><div class="stat-l">всего скробблов</div></div>
+      <div class="stat"><div class="stat-n">${S.sessionSynced}</div><div class="stat-l">за сессию</div></div>
+    </div>
+
+    <div class="section" style="margin-top:10px">
+      <div class="section-label">лог</div>
+      <div class="log">${logHtml}</div>
+    </div>
+
+    ${S.lastError ? `<div class="error-msg" style="margin-top:10px">⚠ ${S.lastError}</div>` : ''}
+
+    <button class="btn btn-ghost btn-sm" style="margin-top:16px"
+      onclick="if(S.djMode)stopDJ();S.screen='connect';render()">изменить аккаунты</button>
+  </div>`;
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
+function render() {
+  if      (S.screen==='setup')        renderSetup();
+  else if (S.screen==='connect')      renderConnect();
+  else if (S.screen==='auth_pending') renderAuthPending();
+  else if (S.screen==='main')         renderMain();
+}
+
+async function init() {
+  load();
+  if (await handleCallback()) return;
+  if (!S.apiKey || !S.apiSecret)                       S.screen = 'setup';
+  else if (!S.me.sessionKey || !S.partner.sessionKey)  S.screen = 'connect';
+  else                                                   S.screen = 'main';
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
