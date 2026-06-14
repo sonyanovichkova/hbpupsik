@@ -362,6 +362,12 @@ async function scrobble(tracks, sk) {
 
 // ─── DJ loop ──────────────────────────────────────────────────────────────────
 async function tick() {
+  if (!S.partner.sessionKey) {
+    stopDJ();
+    S.lastError = 'session_missing';
+    render();
+    return;
+  }
   try {
     const since = S.lastTimestamp || (Math.floor(Date.now()/1000) - 60);
     S.nowPlaying = await getNowPlaying(S.me.username);
@@ -378,8 +384,13 @@ async function tick() {
     }
     S.lastError = null;
   } catch(e) {
-    S.lastError = e.message;
-    addLog(`ошибка: ${e.message}`, 'err');
+    if (e.message.includes('[17]')) {
+      stopDJ();
+      S.lastError = 'session_invalid';
+    } else {
+      S.lastError = e.message;
+      addLog(`ошибка: ${e.message}`, 'err');
+    }
   }
   render();
 }
@@ -427,6 +438,18 @@ async function handleCallback() {
   S.screen = 'connect'; render(); return true;
 }
 function doAuth(which) { save(); location.href = authUrl(which); }
+function reconnectPartner() {
+  S.partner = { username: '', sessionKey: '' };
+  S.lastError = null;
+  save();
+  S.screen = 'connect';
+  render();
+}
+function hardReset() {
+  if (!confirm('Сбросить все данные? API ключи тоже придётся ввести заново.')) return;
+  localStorage.removeItem('lft_v3');
+  location.reload();
+}
 function disconnect(which) {
   if (which==='me') S.me={username:'',sessionKey:''};
   else S.partner={username:'',sessionKey:''};
@@ -594,10 +617,20 @@ function renderMain() {
       <div class="log">${logHtml}</div>
     </div>
 
-    ${S.lastError ? `<div class="error-msg" style="margin-top:10px">⚠ ${S.lastError}</div>` : ''}
+    ${S.lastError === 'session_invalid' || S.lastError === 'session_missing' ? `
+      <div class="error-msg" style="margin-top:10px">
+        ⚠ Session key аккаунта <strong>${S.partner.username || 'партнёра'}</strong> не работает.
+        Нужно переподключить его аккаунт.
+        <div style="margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="reconnectPartner()">Переподключить →</button>
+        </div>
+      </div>` : S.lastError ? `<div class="error-msg" style="margin-top:10px">⚠ ${S.lastError}</div>` : ''}
 
-    <button class="btn btn-ghost btn-sm" style="margin-top:16px"
-      onclick="if(S.djMode)stopDJ();S.screen='connect';render()">изменить аккаунты</button>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm"
+        onclick="if(S.djMode)stopDJ();S.screen='connect';render()">изменить аккаунты</button>
+      <button class="btn btn-ghost btn-sm" onclick="hardReset()" style="color:var(--muted2);border-color:var(--border)">сбросить всё</button>
+    </div>
   </div>`;
 }
 
